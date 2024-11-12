@@ -1,0 +1,5 @@
+fastAPI
+pydantic
+uvicorn
+sqlmodel
+jinja2
