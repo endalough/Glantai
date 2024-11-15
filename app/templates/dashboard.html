@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Glantai</h1>
+<table 
+    id="table"
+    class="table table-striped"
+    data-toggle="table"
+    data-url="/api/items"
+    data-method="get"
+    data-editable-url="/update"
+    data-show-refresh="true"
+    data-search="true"
+>
+    <thead>
+        <tr>
+            <th data-field="id">ID</th>
+            <th data-field="name" data-editable="true">Name</th>
+            <th data-field="location" data-editable="true">Location</th>
+            <th data-field="sub_location" data-editable="true">SubLocation</th>
+            <th data-field="description" data-editable="true">Description</th>
+            <th data-field="quantity" data-editable="true">Quantity</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.id }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.location }}</td>
+            <td>{{ item.sub_location }}</td>
+            <td>{{ item.description }}</td>
+            <td>{{ item.quantity }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    $(function () {
+        // Enable table editability
+        $('#table').bootstrapTable({
+            onEditableSave: function (field, row, oldValue, $el) {
+                $.post('/update', {
+                    id: row.id,
+                    field: field,
+                    value: row[field]
+                }).done(function (data) {
+                    if (data.status === 'success') {
+                        console.log("Item updated successfully");
+                    }
+                }).fail(function () {
+                    alert("Error updating item.");
+                    $el.text(oldValue); // Restore old value in case of error
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

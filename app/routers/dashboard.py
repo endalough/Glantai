@@ -1,25 +1,31 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from app.routers import Item, ItemBase, ItemOptionals, all_attributes_none, SessionDep
+from fastapi.templating import Jinja2Templates
 import logging
 from sqlmodel import select
 
 router  = APIRouter(prefix="/items")
-
 logger = logging.getLogger(__name__)
 
+templates = Jinja2Templates(directory="app/templates")
 
-@router.post("/", response_model=Item)
-def create_item(item_base: ItemBase, session: SessionDep):
+@router.post("/create/", response_class=HTMLResponse)
+def create_item(request: Request, item_base: ItemBase, session: SessionDep):
     item = Item.model_validate(item_base)
     session.add(item)
     session.commit()
     session.refresh(item)
-    return item
+    return templates.TemplateResponse(
+        request=request, name="create_item.html", context={"item": item}
+    )
 
-@router.get("/", response_model=list[Item])
-def read_items(session: SessionDep):
+@router.get("/dashboard/", response_class=HTMLResponse)
+def read_items(request: Request, session: SessionDep):
     items = session.exec(select(Item)).all()
-    return items
+    return templates.TemplateResponse(
+        request=request, name="dashboard.html", context={"items": items}
+    )
 
 @router.patch("/{item_id}", response_model=Item)
 def update_item(item_id: int, item_optionals: ItemOptionals, session: SessionDep):
@@ -33,22 +39,23 @@ def update_item(item_id: int, item_optionals: ItemOptionals, session: SessionDep
     session.refresh(item_db)
     return item_db
 
-    
-@router.delete("/{item_id}")
-def delete_item(item_id: int, session: SessionDep):
-    item = session.get(Item, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found in db")
-    session.delete(item)
-    session.commit()
-    return {"ok": True}
-
 @router.get("/{item_id}", response_model=Item)
 def read_item_by_id(item_id: int, session: SessionDep):
     item = session.get(Item, item_id)
     if not item:
         return HTTPException(status_code=404, detail="item not found in database")
     return item
+
+    
+@router.get("/delete/{item_id}")
+def delete_item(item_id: int, session: SessionDep):
+    item = session.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found in db")
+    session.delete(item)
+    session.commit()
+    return RedirectResponse("/items/dashboard/", status_code=303)
+
 
 @router.post("/name/{item_name}", response_model=list[Item])
 def read_item_by_name(item_name: str, session: SessionDep):
