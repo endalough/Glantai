@@ -3,3 +3,4 @@ pydantic
 uvicorn
 sqlmodel
 jinja2
+python-multipart

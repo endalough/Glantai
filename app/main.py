@@ -1,14 +1,12 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from .core.database import create_db_and_tables
-from .routers import dashboard
+from .routers import items
 import logging
 
 
 app = FastAPI()
-app.include_router(dashboard.router)
+app.include_router(items.router)
 
 
 logger = logging.getLogger(__name__)

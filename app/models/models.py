@@ -18,5 +18,8 @@ class ItemOptionals(ItemBase):
     description: str | None = None
     quantity: int | None = None
 
+# class Location(SQLModel, table=True):
+#     pass
+
 def all_attributes_none(model: SQLModel) -> bool:
     return all(value is None for value in model.model_dump(exclude_unset=True).values())

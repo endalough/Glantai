@@ -1,33 +1,48 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app.routers import Item, ItemBase, ItemOptionals, all_attributes_none, SessionDep
 from fastapi.templating import Jinja2Templates
 import logging
 from sqlmodel import select
+from sqlalchemy.orm import Session
 
-router  = APIRouter(prefix="/items")
+router_prefix = "/items"
+router  = APIRouter(prefix=router_prefix)
 logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="app/templates")
 
-@router.post("/create/", response_class=HTMLResponse)
-def create_item(request: Request, item_base: ItemBase, session: SessionDep):
-    item = Item.model_validate(item_base)
+@router.post("/create")
+def create_item(session: SessionDep,
+                name: str = Form(...),
+                location: str = Form(...),
+                sub_location: str = Form(...),
+                description: str = Form(...),
+                quantity: int = Form(...)
+                ):
+    item = Item(name=name, location=location, sub_location=sub_location, description=description, quantity=quantity)
     session.add(item)
     session.commit()
     session.refresh(item)
+    return RedirectResponse(router_prefix, status_code=303)
+
+@router.get("/")
+def read_items(request: Request, session: SessionDep, page: int = 1, size: int = 5):
+    offset = (page - 1) * size
+    items = session.exec(select(Item).offset(offset).limit(size)).all()
+    total_count = len(session.exec(select(Item)).all())
+
     return templates.TemplateResponse(
-        request=request, name="create_item.html", context={"item": item}
+        "items.html",
+        {
+            "request": request,
+            "items": items,
+            "page": page,
+            "total_pages": (total_count + size - 1) // size,
+        },
     )
 
-@router.get("/dashboard/", response_class=HTMLResponse)
-def read_items(request: Request, session: SessionDep):
-    items = session.exec(select(Item)).all()
-    return templates.TemplateResponse(
-        request=request, name="dashboard.html", context={"items": items}
-    )
-
-@router.patch("/{item_id}", response_model=Item)
+@router.patch("/{item_id}")
 def update_item(item_id: int, item_optionals: ItemOptionals, session: SessionDep):
     item_db = session.get(Item, item_id)
     if not item_db:
@@ -37,7 +52,7 @@ def update_item(item_id: int, item_optionals: ItemOptionals, session: SessionDep
     session.add(item_db)
     session.commit()
     session.refresh(item_db)
-    return item_db
+    return RedirectResponse("/items", status_code=303)
 
 @router.get("/{item_id}", response_model=Item)
 def read_item_by_id(item_id: int, session: SessionDep):
@@ -45,19 +60,18 @@ def read_item_by_id(item_id: int, session: SessionDep):
     if not item:
         return HTTPException(status_code=404, detail="item not found in database")
     return item
-
     
-@router.get("/delete/{item_id}")
+@router.post("/delete/{item_id}")
 def delete_item(item_id: int, session: SessionDep):
     item = session.get(Item, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found in db")
     session.delete(item)
     session.commit()
-    return RedirectResponse("/items/dashboard/", status_code=303)
+    return RedirectResponse(router_prefix, status_code=303)
 
 
-@router.post("/name/{item_name}", response_model=list[Item])
+@router.post("/name/{item_name}")
 def read_item_by_name(item_name: str, session: SessionDep):
     search_statement = select(Item).where(Item.name == item_name)
     item = session.exec(search_statement)
