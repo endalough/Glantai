@@ -8,7 +8,7 @@ import logging
 app = FastAPI()
 app.include_router(items.router)
 
-
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 @app.on_event("startup")

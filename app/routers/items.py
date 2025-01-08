@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi import APIRouter, HTTPException, Request, Form, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
-from app.routers import Item, ItemBase, ItemOptionals, all_attributes_none, SessionDep
+from app.models.models import Item, ItemBase, ItemOptionals, all_attributes_none
+from app.core.database import SessionDep
+from app.services.services import search_by_keyword, filter_locations
 from fastapi.templating import Jinja2Templates
 import logging
 from sqlmodel import select
@@ -26,11 +28,20 @@ def create_item(session: SessionDep,
     session.refresh(item)
     return RedirectResponse(router_prefix, status_code=303)
 
+@router.get("/locations")
+def get_all_locations(session: SessionDep):
+    unique_locations = session.exec(select(Item.location).distinct()).all()
+    return unique_locations
+
 @router.get("/")
 def read_items(request: Request, session: SessionDep, page: int = 1, size: int = 5):
     offset = (page - 1) * size
+    logger.debug(f"page: {page}")
+    logger.debug(f"offset: {offset}")
     items = session.exec(select(Item).offset(offset).limit(size)).all()
     total_count = len(session.exec(select(Item)).all())
+    # locations = session.exec(select(Item.location).distinct()).all()
+    locations = get_all_locations(session=session)
 
     return templates.TemplateResponse(
         "items.html",
@@ -39,6 +50,77 @@ def read_items(request: Request, session: SessionDep, page: int = 1, size: int =
             "items": items,
             "page": page,
             "total_pages": (total_count + size - 1) // size,
+            "locations": locations
+        },
+    )
+@router.get("/search")
+def search(request: Request, session: SessionDep, query: str = Query(...), page: int = 1, size: int = 5):
+    logger.info(f"query: {query}")
+
+    offset = (page - 1) * size
+    logger.debug(f"page: {page}")
+    logger.debug(f"offset: {offset}")
+
+    items = session.exec(select(Item)).all()
+    filtered_items = search_by_keyword(query, items)
+
+    end_index = offset + size
+    filtered_items_length = len(filtered_items)
+    logging.debug(f"filtered_items_length: {len(filtered_items)}")
+
+    if end_index > filtered_items_length:
+        logger.debug("if")
+        paginated_items = filtered_items[offset:]
+        logger.debug(f"start: {filtered_items[offset-1].id}")
+    else:
+        logger.debug("else")
+        paginated_items = filtered_items[offset: offset + size]
+
+    return templates.TemplateResponse(
+        "search.html",
+        {
+            "request": request,
+            "items": paginated_items,
+            "page": page,
+            "total_pages": (filtered_items_length + size - 1) // size,
+            "query": query,
+            "size": size
+        },
+    )
+
+@router.get("/filtered")
+def filter_items(request: Request, session: SessionDep, location: str = Query(...), page: int = 1, size: int = 5):
+    location = location.lower()
+    items = session.exec(select(Item)).all()
+    offset = (page - 1) * size
+
+    locations = get_all_locations(session=session) # this is to populate the dropdown
+
+
+    filtered_items = filter_locations(location, items)
+
+    end_index = offset + size
+    filtered_items_length = len(filtered_items)
+    logging.debug(f"filtered_items_length: {len(filtered_items)}")
+
+    if end_index > filtered_items_length:
+        logger.debug("if")
+        paginated_items = filtered_items[offset:]
+        logger.debug(f"start: {filtered_items[offset-1].id}")
+    else:
+        logger.debug("else")
+        paginated_items = filtered_items[offset: offset + size]
+
+    return templates.TemplateResponse(
+        "search.html",
+        {
+            "request": request,
+            "items": paginated_items,
+            "page": page,
+            "total_pages": (filtered_items_length + size - 1) // size,
+            "query": location,
+            "locations": locations,
+            "size": size
         },
     )
 
@@ -46,9 +128,9 @@ def read_items(request: Request, session: SessionDep, page: int = 1, size: int =
 def update_item(item_id: int, item_optionals: ItemOptionals, session: SessionDep):
     item_db = session.get(Item, item_id)
     if not item_db:
-        raise HTTPException(status_code=404, detail="Item not in db") 
+        raise HTTPException(status_code=404, detail="Item not in db")
     item_dict = item_optionals.model_dump(exclude_unset=True)
-    item_db.sqlmodel_update(item_dict)  
+    item_db.sqlmodel_update(item_dict)
     session.add(item_db)
     session.commit()
     session.refresh(item_db)
@@ -79,20 +161,9 @@ def read_item_by_name(item_name: str, session: SessionDep):
         return HTTPException(status_code=404, detail="item not found in database")
     return item
 
-@router.post("/filtered/", response_model=list[Item])
-def filter_items(item_optionals: ItemOptionals, session: SessionDep):
-    logger.info("filtering")
-    logger.info(item_optionals)
-    if all_attributes_none(item_optionals):
-        return "all values are none"
-    
-    items_to_search = item_optionals.model_dump(exclude_unset=True)
-    query = select(Item)
-    for key, value in items_to_search.items():
-        logger.info(f"{key}: {value}")
-        query = query.where(getattr(Item, key) == value)
-        logger.info(query)
-    items = session.exec(query).all()
-    return items
+
+
+
+
 
 

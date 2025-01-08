@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Items{% endblock %}
+{% block title %}Search Items{% endblock %}
 
 {% block content %}
 <h1>Items</h1>
@@ -37,17 +37,6 @@
     </tbody>
 </table>
 
-<!-- <nav aria-label="Page navigation">
-    <ul class="pagination">
-        {% for page_num in range(1, total_pages + 1) %}
-        <li class="page-item {% if page == page_num %}active{% endif %}">
-            <a class="page-link" href="/items/?page={{ page_num }}">{{ page_num }}</a>
-        </li>
-        {% endfor %}
-    </ul>
-</nav> -->
-
-
 <nav aria-label="Page navigation">
     <form method="get" action="/items/search" class="d-inline">
         <input type="hidden" name="query" value="{{ query }}">
@@ -64,36 +53,12 @@
     <ul class="pagination d-inline">
         {% for page_num in range(1, total_pages + 1) %}
         <li class="page-item {% if page == page_num %}active{% endif %}">
-            <a class="page-link" href="/items/?page={{ page_num }}">{{ page_num }}</a>
+            <a class="page-link" href="/items/search?query={{ query }}&size={{ size }}&page={{ page_num }}">{{ page_num }}</a>
         </li>
         {% endfor %}
     </ul>
 </nav>
 
-<h2>Add a New Item</h2>
-<form method="post" action="/items/create">
-    <div class="form-group">
-        <label for="name">Name</label>
-        <input type="text" class="form-control" id="name" name="name" required>
-    </div>
-    <div class="form-group">
-        <label for="price">Location</label>
-        <input type="text" step="0.01" class="form-control" id="location" name="location" required>
-    </div>
-    <div class="form-group">
-        <label for="price">Sub Location</label>
-        <input type="text" step="0.01" class="form-control" id="sub_location" name="sub_location" required>
-    </div>
-    <div class="form-group">
-        <label for="description">Description</label>
-        <input type="text" class="form-control" id="description" name="description" required>
-    </div>
-    <div class="form-group">
-        <label for="in_stock">Quantity</label>
-        <input type="number" class="form-control" id="quantity" name="quantity" required>
-    </div>
-    <button type="submit" class="btn btn-success">Add</button>
-</form>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {

@@ -4,27 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Glantai{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <<!-- Bootstrap CSS -->
+    <!--<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"> -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href=
     "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" />
     
-        <!-- Bootstrap Font Icon CSS -->
-        <link rel="stylesheet" href=
+    <!-- Bootstrap Font Icon CSS -->
+    <link rel="stylesheet" href=
     "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            
-            <a class="navbar-brand" href="/">
-                <span>Glantai <i class="bi-pin-map"></i></span>
+        <div class="container-fluid">   
+            <a class="navbar-brand" href="/items">
+                <span>Glantai<i class="bi-pin-map"></i></span>
             </a>
-            
+
+            <div class="navbar-collapse" id="navbarNav">
+                <!-- Search bar -->
+                <form class="d-flex p-2" role="search" style="margin-right: 20px;" action="/items/search" method="get">
+                    <input class="form-control me-2" type="search" name="query" placeholder="Search" aria-label="Search">
+                    <button class="btn btn-outline-success" type="submit">Search</button>
+                </form>
+
+                <!-- Dropdown Form -->
+                <form method="get" action="/items/filtered">
+                    <div class="mb-3">
+                    <label for="locationDropdown" class="form-label">Select Location:</label>
+                    <select id="locationDropdown" name="location" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Locations</option>
+                        {% for location in locations %}
+                        <option value="{{ location }}" {% if location == selected_location %}selected{% endif %}>
+                        {{ location | capitalize }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    </div>
+                </form>  
+            </div>
         </div>
     </nav>
     <div class="container mt-5">
         {% block content %}{% endblock %}
     </div>
+    <script>
+        // Add an event listener for the dropdown
+        document.getElementById('filterDropdown').addEventListener('change', function () {
+            const selectedColumn = this.value;
+            if (selectedColumn) {
+                fetch(`/filter?column=${selectedColumn}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const container = document.getElementById('itemsContainer');
+                        container.innerHTML = data.html;
+                    })
+                    .catch(error => console.error('Error fetching filtered items:', error));
+            }
+        });
+    </script>
 </body>
 </html>
